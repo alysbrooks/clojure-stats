@@ -2,8 +2,7 @@
   (:require [edamame.core :as e]
             [clojure.walk :as walk]
             [clojure.tools.cli])
-  (:import [java.io File])
-  )
+  (:import [java.io File]))
 
 
 (def clojure-defaults {:all true
@@ -38,9 +37,7 @@
   "Classifies a symbol broadly"
   [sym]
   (let [resolved (try-resolve sym nil)
-        resolved (if (instance? java.lang.Class resolved) (symbol (.getName resolved)) resolved)
-
-        ]
+        resolved (if (instance? java.lang.Class resolved) (symbol (.getName resolved)) resolved)]
     (try 
       (let [resolved-ns (namespace (symbol resolved))]
         (cond 
