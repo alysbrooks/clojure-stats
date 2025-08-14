@@ -18,8 +18,7 @@
       (e/parse-string-all (merge clojure-defaults {:auto-resolve-ns true :fn true}) )))
 
 (defn try-resolve [symbol extra-aliases]
-
-  (let [resolved (resolve symbol) ]
+  (let [resolved  (resolve symbol)]
     (or resolved symbol)))
 
 (defn enumerate-symbols
@@ -74,12 +73,52 @@
                    (into {}))]
     counts))
 
-
-;; (apply merge-with + counts)
-
 (defn aggregate-top-level [results]
   (apply merge-with + results))
 
+
+
+(defn analyze-forms* [form]
+  (let [type (cond 
+               (symbol? form) :symbol 
+               (list? form) :form 
+               (var? form) :var 
+               (coll? form) :coll
+               (or (string? form) (number? form) (boolean? form)) :data 
+               :else :other)
+        resolved-symbol (when (symbol? form) (try-resolve form nil))
+        ;; _ (prn "sym:" resolved-symbol)
+        symbol-type (when (symbol? form) (classify-symbol resolved-symbol))
+
+        ]
+
+    {:type type
+     :form form
+     :resolved-symbol resolved-symbol
+     :meta (meta form)
+     :symbol-type symbol-type }))
+
+(defn analyze-forms [forms]
+  (let [form (first forms)]
+    (->> (tree-seq seq? identity form)
+       (map analyze-forms*))))
+
+
+
+(defn classify-files2 [path]
+
+  (println (file-seq (File. path)))
+  (->> (file-seq (File. path))
+       (filter #(.endsWith (.getName %) ".clj"))
+       (map read-file)
+       
+       (mapcat analyze-forms )))
+
+(classify-files2 "./src")
+
+*e
+
+(try-resolve  (first '(ns)) {})
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
@@ -90,6 +129,7 @@
   (let [{:keys [arguments] {:keys [analysis]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)]
     (prn parsed)
     (for [arg arguments]
-      (classify-files arg))))
+      (println (classify-files2 arg)))
 
 
+    ))
