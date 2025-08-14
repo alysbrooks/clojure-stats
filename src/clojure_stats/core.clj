@@ -1,7 +1,8 @@
 (ns clojure-stats.core
   (:require [edamame.core :as e]
             [clojure.walk :as walk]
-            [clojure.tools.cli])
+            [clojure.tools.cli]
+            [clojure-stats.output :as output])
   (:import [java.io File]))
 
 
@@ -87,13 +88,15 @@
                (or (string? form) (number? form) (boolean? form)) :data 
                :else :other)
         resolved-symbol (when (symbol? form) (try-resolve form nil))
-        symbol-type (when (symbol? form) (classify-symbol resolved-symbol))]
+        #_#_symbol-type (when (symbol? form) (classify-symbol resolved-symbol))]
 
     {:type type
      :form form
      :resolved-symbol resolved-symbol
      :meta (meta form)
-     :symbol-type symbol-type }))
+     #_#_:symbol-type symbol-type 
+
+     }))
 
 (defn analyze-forms [forms]
   (let [form (first forms)]
@@ -118,7 +121,8 @@
 
 (defn -main [& args]
 
-  (let [{:keys [arguments] {:keys [analysis]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)]
-    (prn parsed)
-    (for [arg arguments]
-      (println (classify-files2 arg)))))
+  (let [{:keys [arguments] {:keys [analysis]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
+        edn-out (clojure-stats.output/->EDNOut) ]
+    ;; (prn parsed)
+    (doseq [arg arguments]
+      (clojure-stats.output/write-records edn-out (classify-files2 arg)))))

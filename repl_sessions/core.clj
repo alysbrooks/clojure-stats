@@ -43,4 +43,9 @@
 
 (classify-files "../shape-of-clojure/test/technomancy/leiningen/src")
 
+(analyze-forms '(test :a))
+
+
+(map list? '(test :a (test)))
+
 *e
