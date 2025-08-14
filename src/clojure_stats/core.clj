@@ -87,10 +87,7 @@
                (or (string? form) (number? form) (boolean? form)) :data 
                :else :other)
         resolved-symbol (when (symbol? form) (try-resolve form nil))
-        ;; _ (prn "sym:" resolved-symbol)
-        symbol-type (when (symbol? form) (classify-symbol resolved-symbol))
-
-        ]
+        symbol-type (when (symbol? form) (classify-symbol resolved-symbol))]
 
     {:type type
      :form form
@@ -104,7 +101,6 @@
        (map analyze-forms*))))
 
 
-
 (defn classify-files2 [path]
 
   (println (file-seq (File. path)))
@@ -116,10 +112,6 @@
 
 (classify-files2 "./src")
 
-*e
-
-(try-resolve  (first '(ns)) {})
-
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
    ["-h" "--help"]])
@@ -129,7 +121,4 @@
   (let [{:keys [arguments] {:keys [analysis]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)]
     (prn parsed)
     (for [arg arguments]
-      (println (classify-files2 arg)))
-
-
-    ))
+      (println (classify-files2 arg)))))
