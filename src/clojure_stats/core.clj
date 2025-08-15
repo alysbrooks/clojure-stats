@@ -129,7 +129,7 @@
               (.delete)))
         #_#_edn-out (clojure-stats.output/->EDNOut)
         #_#_db-out (clojure-stats.output/->DuckDBOut "output.db")
-        out (clojure-stats.output/->DuckDBOut "output.db")
+        out (clojure-stats.output/->DuckDBBatchOut "output.db")
         out (if (satisfies? clojure-stats.output/Connect out)
               (clojure-stats.output/connect out)
               out) ]

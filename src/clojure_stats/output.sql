@@ -20,5 +20,5 @@ CREATE TABLE forms (form_id INTEGER PRIMARY KEY DEFAULT nextval('form_id_serial'
 -- :name insert-forms :!
 
 INSERT INTO forms (form_type, form, resolved_symbol, meta)
-VALUES (:type, :form, :resolved-symbol, :meta);
+VALUES :t*:vals;
 

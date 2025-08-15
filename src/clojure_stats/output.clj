@@ -4,7 +4,9 @@
             [next.jdbc]
             [next.jdbc.types]
             )
-  (:import [java.io File]))
+  (:import [java.io File]
+           [java.sql DriverManager PreparedStatement]
+           [org.duckdb DuckDBConnection]))
 
 
 (defprotocol AnalysisWriter
@@ -38,16 +40,44 @@
       (assoc this :db db)))
   AnalysisWriter
   (write-records [{:keys [db] :as _this} records]
-    (let [start (System/nanoTime)]
-      (doseq [record records]
-        (let [record-processed (-> record 
-                                   (update :type name)
-                                   (update :resolved-symbol str)
-                                   (update :meta str)
-                                   (update :form str))]
-          (insert-forms db record-processed)))
-      (println (format "Processed in %2f ms" (/ (- (System/nanoTime) start) 1e6)))
+    (let [start (System/nanoTime)
+          records (->> records 
+                      (mapv (fn [{:keys [type resolved-symbol meta form] :as _record}]
+                             [(name type) (str resolved-symbol) (str meta) (str form)])))]
+
+      (insert-forms db {:vals records})
+      (let [elapsed (/ (- (System/nanoTime) start) 1e6)
+            per-record (/ elapsed (count records)) ]
+        (println (format "Processed in %.2f ms (%.2f/ms record)" elapsed per-record))))))
+
+(defrecord DuckDBBatchOut [url]
+  Connect
+  (connect [this]
+    (hugsql/set-adapter! (next-adapter/hugsql-adapter-next-jdbc))
+
+    (let  [db (next.jdbc/get-datasource {:dbtype "duckdb" :host :none :dbname url})]
       
-      )))
+      (create-form-type db)
+      (create-forms-table db)
+      (assoc this :db db)))
+  AnalysisWriter
+  (write-records [{:keys [db url] :as _this} records]
+    (let [start (System/nanoTime)
+          direct-connection ^DuckDBConnection (DriverManager/getConnection (str "jdbc:duckdb:" url))
+          records (->> records 
+                      (mapv (fn [{:keys [type resolved-symbol meta form] :as _record}]
+                             [(name type) (str resolved-symbol) (str meta) (str form)])))
+          statement (.prepareStatement direct-connection " INSERT INTO forms (form, resolved_symbol, meta) VALUES (?::VARCHAR, ?, ?, ?);")]
 
+      (doseq [{:keys [type form resolved-symbol meta] :as _record} records]
+        (doto statement
+          (.setObject 1 (str form))
+          (.setObject 2 (str resolved-symbol))
+          (.setObject 3 (str meta))
+          (.addBatch)))
+        (.executeBatch statement)
+      (.close statement)
 
+      (let [elapsed (/ (- (System/nanoTime) start) 1e6)
+            per-record (/ elapsed (count records)) ]
+        (println (format "Processed in %.2f ms (%.2f/ms record)" elapsed per-record))))))
