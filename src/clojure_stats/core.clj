@@ -117,19 +117,22 @@
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
-   ["-t" "--to" "Output format. One of " :parse-fn keyword]
+   ["-t" "--to FORMAT" "Output format. One of " :parse-fn keyword :default :stdout]
    [nil "--overwrite" "Deletes the database if necessary" :default false]
+   ["-o" "--output FILE" "Filename to output to."]
    ["-h" "--help"]])
 
 (defn -main [& args]
 
-  (let [{:keys [arguments] {:keys [analysis overwrite]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
+  (let [{:keys [arguments] {:keys [output to analysis overwrite]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
+        output-file (or output "output.db")
         _ (when overwrite 
-            (doto (File. "output.db")
+            (doto (File. output-file)
               (.delete)))
-        #_#_edn-out (clojure-stats.output/->EDNOut)
-        #_#_db-out (clojure-stats.output/->DuckDBOut "output.db")
-        out (clojure-stats.output/->DuckDBBatchOut "output.db")
+        out (case to
+              :stdout (clojure-stats.output/->EDNOut)
+              :duckdb (clojure-stats.output/->DuckDBOut output-file)
+              :duckdb_batch (clojure-stats.output/->DuckDBBatchOut output-file))
         out (if (satisfies? clojure-stats.output/Connect out)
               (clojure-stats.output/connect out)
               out) ]
