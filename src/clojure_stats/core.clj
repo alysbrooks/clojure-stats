@@ -79,7 +79,7 @@
 
 
 
-(defn analyze-forms* [form]
+(defn analyze-forms* [form file]
   (let [type (cond 
                (symbol? form) :symbol 
                (list? form) :list 
@@ -93,15 +93,18 @@
     {:type type
      :form form
      :resolved-symbol resolved-symbol
-     :meta (meta form)
-     #_#_:symbol-type symbol-type 
+     :meta (if (nil? file) 
+             (meta form)
+             (merge (meta form) {:file (str file)}))
+     #_#_:symbol-type symbol-type }))
 
-     }))
-
-(defn analyze-forms [forms]
-  (let [form (first forms)]
-    (->> (tree-seq seq? identity form)
-       (map analyze-forms*))))
+(defn analyze-forms 
+  ([forms]
+   (analyze-forms forms nil))
+  ([forms file]
+   (let [form (first forms)]
+     (->> (tree-seq seq? identity form)
+          (map #(analyze-forms* % file))))))
 
 
 (defn classify-files2 [path]
@@ -109,9 +112,9 @@
   (println (file-seq (File. path)))
   (->> (file-seq (File. path))
        (filter #(.endsWith (.getName %) ".clj"))
-       (map read-file)
+       (map (juxt identity read-file))
        
-       (mapcat analyze-forms )))
+       (mapcat (fn [[file forms]] (analyze-forms forms file)) )))
 
 (classify-files2 "./src")
 
