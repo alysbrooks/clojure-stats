@@ -82,7 +82,7 @@
 (defn analyze-forms* [form]
   (let [type (cond 
                (symbol? form) :symbol 
-               (list? form) :form 
+               (list? form) :list 
                (var? form) :var 
                (coll? form) :coll
                (or (string? form) (number? form) (boolean? form)) :data 
@@ -117,12 +117,22 @@
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
+   ["-t" "--to" "Output format. One of " :parse-fn keyword]
+   [nil "--overwrite" "Deletes the database if necessary" :default false]
    ["-h" "--help"]])
 
 (defn -main [& args]
 
-  (let [{:keys [arguments] {:keys [analysis]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
-        edn-out (clojure-stats.output/->EDNOut) ]
-    ;; (prn parsed)
+  (let [{:keys [arguments] {:keys [analysis overwrite]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
+        _ (when overwrite 
+            (doto (File. "output.db")
+              (.delete)))
+        #_#_edn-out (clojure-stats.output/->EDNOut)
+        #_#_db-out (clojure-stats.output/->DuckDBOut "output.db")
+        out (clojure-stats.output/->DuckDBOut "output.db")
+        out (if (satisfies? clojure-stats.output/Connect out)
+              (clojure-stats.output/connect out)
+              out) ]
+    
     (doseq [arg arguments]
-      (clojure-stats.output/write-records edn-out (classify-files2 arg)))))
+      (clojure-stats.output/write-records out (classify-files2 arg)))))
