@@ -3,7 +3,10 @@
             [clojure.walk :as walk]
             [clojure.tools.cli]
             [clojure-stats.output :as output])
-  (:import [java.io File]))
+  (:import [java.io File])
+  (:gen-class))
+
+(set! *warn-on-reflection* true)
 
 
 (def clojure-defaults {:all true
@@ -12,7 +15,7 @@
                        :end-location false
                        :location? seq?})
 
-(defn read-file 
+(defn read-file
   "Reads a file"
   [file]
   (-> (slurp file)
@@ -26,7 +29,7 @@
   "Enumerates symbols inside a form"
   [forms]
 
-  (->> (for [form forms] 
+  (->> (for [form forms]
         (->> (tree-seq seq? identity form)
              (filter symbol?)
              (map #( try-resolve % nil))
@@ -37,10 +40,10 @@
   "Classifies a symbol broadly"
   [sym]
   (let [resolved (try-resolve sym nil)
-        resolved (if (instance? java.lang.Class resolved) (symbol (.getName resolved)) resolved)]
-    (try 
+        resolved (if (instance? java.lang.Class resolved) (symbol (.getName ^java.lang.Class resolved)) resolved)]
+    (try
       (let [resolved-ns (namespace (symbol resolved))]
-        (cond 
+        (cond
         (special-symbol? sym) :special
         (= resolved-ns "clojure.core") :ns/clojure.core
         (not (nil? resolved-ns)) (keyword "ns" resolved-ns )
@@ -61,8 +64,8 @@
       (reduce #(merge-with + %1 %2))))
 
 (defn classify-files [path]
-  (let [clj-files (->> (file-seq (File. path))
-                       (filter #(.endsWith (.getName %) ".clj"))) 
+  (let [clj-files (->> (file-seq (File. ^String path))
+                       (filter #(.endsWith ^String (.getName ^File %) ".clj"))) 
 
         counts (->> (for [file clj-files]
                      (try 
@@ -107,11 +110,11 @@
           (map #(analyze-forms* % file))))))
 
 
-(defn classify-files2 [path]
+(defn classify-files2 [^String path]
 
-  (println (file-seq (File. path)))
+  ;; (println (file-seq (File. path)))
   (->> (file-seq (File. path))
-       (filter #(.endsWith (.getName %) ".clj"))
+       (filter #(.endsWith (.getName ^File %) ".clj"))
        (map (juxt identity read-file))
        
        (mapcat (fn [[file forms]] (analyze-forms forms file)) )))
@@ -130,15 +133,15 @@
   (let [{:keys [arguments] {:keys [output to analysis overwrite]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
         output-file (or output "output.db")
         _ (when overwrite 
-            (doto (File. output-file)
+            (doto (File. ^String output-file)
               (.delete)))
         out (case to
-              :stdout (clojure-stats.output/->EDNOut)
-              :duckdb (clojure-stats.output/->DuckDBOut output-file)
-              :duckdb_batch (clojure-stats.output/->DuckDBBatchOut output-file))
+              :stdout ^clojure-stats.output.EDNOut (clojure-stats.output/->EDNOut)
+              :duckdb ^clojure-stats.output.DuckDBOut  (clojure-stats.output/->DuckDBOut output-file)
+              :duckdb_batch ^clojure-stats.output.DuckDBBatchOut (clojure-stats.output/->DuckDBBatchOut output-file))
         out (if (satisfies? clojure-stats.output/Connect out)
               (clojure-stats.output/connect out)
               out) ]
-    
+
     (doseq [arg arguments]
       (clojure-stats.output/write-records out (classify-files2 arg)))))

@@ -2,11 +2,11 @@
   (:require [hugsql.core :as hugsql]
             [hugsql.adapter.next-jdbc :as next-adapter]
             [next.jdbc]
-            [next.jdbc.types]
-            )
+            [next.jdbc.types])
   (:import [java.io File]
            [java.sql DriverManager PreparedStatement]
-           [org.duckdb DuckDBConnection]))
+           [org.duckdb DuckDBConnection])
+  (:gen-class))
 
 
 (defprotocol AnalysisWriter
@@ -14,12 +14,12 @@
   (write-records [this records]))
 
 
-(defprotocol Connect 
+(defprotocol Connect
 
   (connect [this]))
 
 (defrecord EDNOut []
-  
+
   AnalysisWriter
 
   (write-records [this records]
@@ -31,17 +31,15 @@
   Connect
   (connect [this]
     (hugsql/set-adapter! (next-adapter/hugsql-adapter-next-jdbc))
-    
-
     (let  [db (next.jdbc/get-datasource {:dbtype "duckdb" :host :none :dbname url})]
-      
+
       (create-form-type db)
       (create-forms-table db)
       (assoc this :db db)))
   AnalysisWriter
   (write-records [{:keys [db] :as _this} records]
     (let [start (System/nanoTime)
-          records (->> records 
+          records (->> records
                       (mapv (fn [{:keys [type resolved-symbol meta form] :as _record}]
                              [(name type) (str resolved-symbol) (str meta) (str form)])))]
 
@@ -56,7 +54,7 @@
     (hugsql/set-adapter! (next-adapter/hugsql-adapter-next-jdbc))
 
     (let  [db (next.jdbc/get-datasource {:dbtype "duckdb" :host :none :dbname url})]
-      
+
       (create-form-type db)
       (create-forms-table db)
       (assoc this :db db)))
@@ -64,7 +62,7 @@
   (write-records [{:keys [db url] :as _this} records]
     (let [start (System/nanoTime)
           direct-connection ^DuckDBConnection (DriverManager/getConnection (str "jdbc:duckdb:" url))
-          records (->> records 
+          records (->> records
                       (mapv (fn [{:keys [type resolved-symbol meta form] :as _record}]
                              [(name type) (str resolved-symbol) (str meta) (str form)])))
           statement (.prepareStatement direct-connection " INSERT INTO forms (form, resolved_symbol, meta) VALUES (?::VARCHAR, ?, ?, ?);")]
