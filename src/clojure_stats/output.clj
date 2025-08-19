@@ -34,14 +34,14 @@
     (let  [db (next.jdbc/get-datasource {:dbtype "duckdb" :host :none :dbname url})]
 
       (create-form-type db)
-      (create-forms-table db)
+      (create-tables db)
       (assoc this :db db)))
   AnalysisWriter
   (write-records [{:keys [db] :as _this} records]
     (let [start (System/nanoTime)
           records (->> records
-                      (mapv (fn [{:keys [type resolved-symbol meta form] :as _record}]
-                             [(name type) (str resolved-symbol) (str meta) (str form)])))]
+                      (mapv (fn [{{:keys [line column]} :meta :keys [type resolved-symbol meta form] :as _record}]
+                             [(name type) (str form) (str resolved-symbol) (str meta) line column ])))]
 
       (insert-forms db {:vals records})
       (let [elapsed (/ (- (System/nanoTime) start) 1e6)
@@ -56,7 +56,7 @@
     (let  [db (next.jdbc/get-datasource {:dbtype "duckdb" :host :none :dbname url})]
 
       (create-form-type db)
-      (create-forms-table db)
+      (create-tables db)
       (assoc this :db db)))
   AnalysisWriter
   (write-records [{:keys [db url] :as _this} records]

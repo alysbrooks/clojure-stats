@@ -6,7 +6,7 @@
   (:import [java.io File])
   (:gen-class))
 
-(set! *warn-on-reflection* true)
+(comment (set! *warn-on-reflection* true))
 
 
 (def clojure-defaults {:all true
@@ -117,9 +117,8 @@
        (filter #(.endsWith (.getName ^File %) ".clj"))
        (map (juxt identity read-file))
        
-       (mapcat (fn [[file forms]] (analyze-forms forms file)) )))
-
-(classify-files2 "./src")
+       (mapcat (fn [[file forms]] (analyze-forms forms file)) )
+       (map (fn [{{:keys [line column]} :meta :as m}] (merge m {:file_line line :file_column column})))))
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
