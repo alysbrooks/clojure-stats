@@ -39,9 +39,14 @@
   AnalysisWriter
   (write-records [{:keys [db] :as _this} records]
     (let [start (System/nanoTime)
+          file-records (->> records
+                            (map #(get-in % [:meta :file]))
+                            (apply hash-set)
+                            (mapv vector))
           records (->> records
-                      (mapv (fn [{{:keys [line column]} :meta :keys [type resolved-symbol meta form] :as _record}]
-                             [(name type) (str form) (str resolved-symbol) (str meta) line column ])))]
+                      (mapv (fn [{{:keys [line column file]} :meta :keys [type resolved-symbol meta form] :as _record}]
+                             [file (name type) (str form) (str resolved-symbol) (str meta) line column ])))]
+      (insert-files db {:vals file-records})
 
       (insert-forms db {:vals records})
       (let [elapsed (/ (- (System/nanoTime) start) 1e6)

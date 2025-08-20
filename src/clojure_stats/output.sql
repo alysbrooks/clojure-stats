@@ -26,8 +26,14 @@ CREATE TABLE forms (form_id INTEGER PRIMARY KEY DEFAULT nextval('form_id_serial'
 	FOREIGN KEY (file_id) REFERENCES files(file_id));
 
 
+-- :name insert-files :!
+INSERT INTO files (file_name)
+VALUES :t*:vals;
+
 -- :name insert-forms :!
 
-INSERT INTO forms (form_type, form, resolved_symbol, meta, file_line, file_column)
-VALUES :t*:vals;
+INSERT INTO forms (file_id, form_type, form, resolved_symbol, meta, file_line, file_column)
+SELECT files.file_id, form_type, form, resolved_symbol, meta, file_line, file_column
+FROM (VALUES :t*:vals) form_values(file_name, form_type, form, resolved_symbol, meta, file_line, file_column)
+	LEFT OUTER JOIN files ON (form_values.file_name = files.file_name) ;
 

@@ -118,7 +118,7 @@
        (map (juxt identity read-file))
        
        (mapcat (fn [[file forms]] (analyze-forms forms file)) )
-       (map (fn [{{:keys [line column]} :meta :as m}] (merge m {:file_line line :file_column column})))))
+       #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
