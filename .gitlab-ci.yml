@@ -1,0 +1,65 @@
+
+.shared_windows_runners:
+  tags:
+    - saas-windows-medium-amd64
+
+stages:
+  - build-uberjar
+  - build-native
+
+build-uberjar:
+  stage: build-uberjar
+  image:
+    name: clojure:temurin-21-trixie
+    entrypoint: [""]
+  script:
+    - mkdir classes
+    - clj -M -e "(compile 'clojure-stats.core) (compile 'clojure-stats.output)"
+    - clj -M:uberdeps --main-class clojure-stats
+    - mv target/clojure_stats-mirror.jar target/clojure_stats.jar
+    - if test $CI_COMMIT_TAG; then cp target/clojure_stats.jar target/clojure_stats-$CI_COMMIT_TAG.jar; fi
+    - apt-get update
+    - apt-get upgrade -y
+    - apt-get install curl -y
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file target/clojure_stats.jar "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/clojure_stats/nightly/clojure_stats.jar"'
+    - 'if test $CI_COMMIT_TAG; then curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file target/clojure_stats.jar "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/clojure_stats/${CI_COMMIT_TAG}/clojure_stats.jar"; fi'
+  artifacts:
+    paths:
+      - target/clojure_stats.jar
+
+build-linux:
+  stage: build-native
+  dependencies:
+    - build-uberjar
+  image:
+    name: ghcr.io/graalvm/native-image-community:24-ol9
+    entrypoint: [""]
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - native-image -jar target/clojure_stats.jar --no-fallback --initialize-at-build-time
+    - mv clojure_stats clojure_stats-linux
+    - if test $CI_COMMIT_TAG; then cp clojure_stats-linux clojure_stats-linux-$CI_COMMIT_TAG; else cp clojure_stats-linux clojure_stats-linux-$CI_COMMIT_SHA; fi
+    - ls
+    - 'curl --request DELETE --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/clojure_stats/nightly/clojure_stats-linux-x86_64"'
+    - 'if test $CI_COMMIT_TAG; then curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file clojure_stats-linux-$CI_COMMIT_TAG "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/clojure_stats/${CI_COMMIT_TAG}/clojure_stats-linux-x86_64-$CI_COMMIT_TAG"; else curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file clojure_stats-linux-$CI_COMMIT_SHA "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/clojure_stats/nightly/clojure_stats-linux-x86_64" ; fi'
+  artifacts:
+    paths:
+      - clojure_stats-linux-$CI_COMMIT_TAG
+      - clojure_stats-linux-$CI_COMMIT_SHA
+
+build-windows:
+  stage: build-native
+  extends:
+    - .shared_windows_runners
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo "running scripts in the test job"
+    - choco install -y visualstudio2022buildtools visualstudio2022-workload-vctools
+    - choco install -y visualstudio2022community
+    - choco install -y windows-sdk-10.0
+    - cmd.exe /k "`"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`" && powershell.exe -NoLogo -ExecutionPolicy Bypass -File ./build.ps1"
+  artifacts:
+    paths:
+      - ./clojure_stats.exe

@@ -1,0 +1,6 @@
+syntax: glob
+
+classes/*
+target/*
+.clj-kondo/*
+.cpcache/*
