@@ -2,9 +2,12 @@
   (:require [edamame.core :as e]
             [clojure.walk :as walk]
             [clojure.tools.cli]
-            [clojure-stats.output :as output])
+            [clojure-stats.output :as output]
+            [io.pedestal.log :as log]
+            )
   (:import [java.io File])
   (:gen-class))
+
 
 (comment (set! *warn-on-reflection* true))
 
@@ -19,7 +22,7 @@
   "Reads a file"
   [file]
   (-> (slurp file)
-      (e/parse-string-all (merge clojure-defaults {:auto-resolve-ns true :fn true}) )))
+      (e/parse-string-all (merge clojure-defaults {:auto-resolve-ns true :fn true}))))
 
 (defn try-resolve [symbol extra-aliases]
   (let [resolved  (resolve symbol)]
@@ -72,7 +75,7 @@
                        [(str file)
                         (classify-symbols (read-file file))]
                        (catch Exception e
-                         (prn #_e (ex-data e) (ex-cause e))
+                         (prn (ex-data e) (ex-cause e))
                          [file nil])))
                    (into {}))]
     counts))
@@ -115,7 +118,15 @@
   ;; (println (file-seq (File. path)))
   (->> (file-seq (File. path))
        (filter #(.endsWith (.getName ^File %) ".clj"))
-       (map (juxt identity read-file))
+       (map (fn [file]
+              (try 
+                [file (read-file file)]
+                (catch Exception e
+                  (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
+                  [file nil])
+                ))
+
+            )
        
        (mapcat (fn [[file forms]] (analyze-forms forms file)) )
        #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
@@ -140,7 +151,7 @@
               :duckdb_batch ^clojure-stats.output.DuckDBBatchOut (clojure-stats.output/->DuckDBBatchOut output-file))
         out (if (satisfies? clojure-stats.output/Connect out)
               (clojure-stats.output/connect out)
-              out) ]
+              out)]
 
     (doseq [arg arguments]
       (clojure-stats.output/write-records out (classify-files2 arg)))))
