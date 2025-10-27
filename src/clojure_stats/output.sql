@@ -19,6 +19,7 @@ CREATE TABLE forms (form_id INTEGER PRIMARY KEY DEFAULT nextval('form_id_serial'
 	form_type form_type,
 	form VARCHAR,
 	resolved_symbol VARCHAR,
+	clojure_type VARCHAR,
 	meta VARCHAR,
 	file_id INTEGER,
 	file_line INTEGER,
@@ -32,8 +33,8 @@ VALUES :t*:vals;
 
 -- :name insert-forms :!
 
-INSERT INTO forms (file_id, form_type, form, resolved_symbol, meta, file_line, file_column)
-SELECT files.file_id, form_type, form, resolved_symbol, meta, file_line, file_column
-FROM (VALUES :t*:vals) form_values(file_name, form_type, form, resolved_symbol, meta, file_line, file_column)
+INSERT INTO forms (file_id, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column)
+SELECT files.file_id, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column
+FROM (VALUES :t*:vals) form_values(file_name, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column)
 	LEFT OUTER JOIN files ON (form_values.file_name = files.file_name) ;
 

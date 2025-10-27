@@ -102,6 +102,7 @@
      :meta (if (nil? file) 
              (meta form)
              (merge (meta form) {:file (str file)}))
+     :clojure-type (type form)
      #_#_:symbol-type symbol-type }))
 
 (defn analyze-forms 
@@ -123,10 +124,7 @@
                 [file (read-file file)]
                 (catch Exception e
                   (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
-                  [file nil])
-                ))
-
-            )
+                  [file nil]))))
        
        (mapcat (fn [[file forms]] (analyze-forms forms file)) )
        #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))

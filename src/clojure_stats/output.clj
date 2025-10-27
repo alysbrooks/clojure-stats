@@ -44,8 +44,8 @@
                             (apply hash-set)
                             (mapv vector))
           records (->> records
-                      (mapv (fn [{{:keys [line column file]} :meta :keys [type resolved-symbol meta form] :as _record}]
-                             [file (name type) (str form) (str resolved-symbol) (str meta) line column ])))]
+                      (mapv (fn [{{:keys [line column file]} :meta :keys [type resolved-symbol meta form clojure-type] :as _record}]
+                             [file (name type) (str form) (str resolved-symbol) (str meta) (str clojure-type) line column ])))]
       (insert-files db {:vals file-records})
 
       (insert-forms db {:vals records})
@@ -70,13 +70,14 @@
           records (->> records
                       (mapv (fn [{:keys [type resolved-symbol meta form] :as _record}]
                              [(name type) (str resolved-symbol) (str meta) (str form)])))
-          statement (.prepareStatement direct-connection " INSERT INTO forms (form, resolved_symbol, meta) VALUES (?::VARCHAR, ?, ?, ?);")]
+          statement (.prepareStatement direct-connection " INSERT INTO forms (form, resolved_symbol, meta, clojure_type) VALUES (?::VARCHAR, ?, ?, ?, ?::VARCHAR);")]
 
-      (doseq [{:keys [type form resolved-symbol meta] :as _record} records]
+      (doseq [{:keys [type form resolved-symbol meta clojure-type] :as _record} records]
         (doto statement
           (.setObject 1 (str form))
           (.setObject 2 (str resolved-symbol))
           (.setObject 3 (str meta))
+          (.setObject 4 (str clojure-type))
           (.addBatch)))
         (.executeBatch statement)
       (.close statement)
