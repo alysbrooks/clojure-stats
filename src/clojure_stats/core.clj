@@ -110,7 +110,7 @@
    (analyze-forms forms nil))
   ([forms file]
    (let [form (first forms)]
-     (->> (tree-seq seq? identity form)
+     (->> (tree-seq sequential? seq form)
           (map #(analyze-forms* % file))))))
 
 
