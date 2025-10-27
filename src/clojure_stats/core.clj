@@ -22,7 +22,7 @@
   "Reads a file"
   [file]
   (-> (slurp file)
-      (e/parse-string-all (merge clojure-defaults {:auto-resolve-ns true :fn true}))))
+      (e/parse-string-all (merge clojure-defaults {:auto-resolve-ns true :fn true :features #{:clj} :read-cond :allow}))))
 
 (defn try-resolve [symbol extra-aliases]
   (let [resolved  (resolve symbol)]
