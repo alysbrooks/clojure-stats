@@ -109,9 +109,9 @@
   ([forms]
    (analyze-forms forms nil))
   ([forms file]
-   (let [form (first forms)]
+   (apply concat (for [form forms]
      (->> (tree-seq sequential? seq form)
-          (map #(analyze-forms* % file))))))
+          (map #(analyze-forms* % file)))))))
 
 
 (defn classify-files2 [^String path]
@@ -128,6 +128,27 @@
        
        (mapcat (fn [[file forms]] (analyze-forms forms file)) )
        #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
+
+(defn classify-files3 [files]
+
+  ;; (println (file-seq (File. path)))
+  (->> files
+       (map (fn [file]
+              (try 
+                [file (read-file file)]
+                (catch Exception e
+                  (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
+                  [file nil]))))
+       
+       (mapcat (fn [[file forms]] (analyze-forms forms file)) )
+       #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
+
+(defn classify-and-write [ out ^String path]
+  (let [files  (->> (file-seq (File. path))
+                    (filter #(.endsWith (.getName ^File %) ".clj"))) ]
+
+    (doseq  [file-partition (partition 20 files)]
+      (clojure-stats.output/write-records out (classify-files3 file-partition)))))
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
@@ -152,4 +173,4 @@
               out)]
 
     (doseq [arg arguments]
-      (clojure-stats.output/write-records out (classify-files2 arg)))))
+      (classify-and-write out arg))))
