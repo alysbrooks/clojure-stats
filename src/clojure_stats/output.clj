@@ -2,7 +2,8 @@
   (:require [hugsql.core :as hugsql]
             [hugsql.adapter.next-jdbc :as next-adapter]
             [next.jdbc]
-            [next.jdbc.types])
+            [next.jdbc.types]
+            [io.pedestal.log :as log])
   (:import [java.io File]
            [java.sql DriverManager PreparedStatement]
            [org.duckdb DuckDBConnection])
@@ -18,7 +19,7 @@
 
   (connect [this]))
 
-(defrecord EDNOut []
+(defrecord EDNOut [file-prefix]
 
   AnalysisWriter
 
@@ -27,17 +28,18 @@
 
 (hugsql/def-db-fns "clojure_stats/output.sql")
 
-(defrecord DuckDBOut [url]
+(defrecord DuckDBOut [url file-prefix]
   Connect
   (connect [this]
     (hugsql/set-adapter! (next-adapter/hugsql-adapter-next-jdbc))
     (let  [db (next.jdbc/get-datasource {:dbtype "duckdb" :host :none :dbname url})]
+      (with-open [connection (next.jdbc/get-connection db)]
 
-      (create-form-type db)
-      (create-tables db)
+        (create-form-type connection)
+        (create-tables connection))
       (assoc this :db db)))
   AnalysisWriter
-  (write-records [{:keys [db] :as _this} records]
+  (write-records [{:keys [db file-prefix] :as _this} records]
     (let [start (System/nanoTime)
           file-records (->> records
                             (map #(get-in % [:meta :file]))
@@ -46,14 +48,25 @@
           records (->> records
                       (mapv (fn [{{:keys [line column file]} :meta :keys [type resolved-symbol meta form clojure-type] :as _record}]
                              [file (name type) (str form) (str resolved-symbol) (str meta) (str clojure-type) line column ])))]
-      (insert-files db {:vals file-records})
+      (with-open [connection (next.jdbc/get-connection db)]
+        (insert-files connection {:vals file-records})
 
-      (insert-forms db {:vals records})
+        (insert-forms connection {:vals records}))
+      ;; Not sure how I feel about these nested lets
+      (let [parent-dir file-prefix 
+            pattern1 (str parent-dir "/(.*?)/") 
+            pattern2 (str parent-dir "/.*?/(.*?)/") 
+        dir-patterns {:pattern1 pattern1 
+                      :pattern2 pattern2}]
+        (with-open [connection (next.jdbc/get-connection db)]
+          (insert-repositories-from-files connection dir-patterns))
+        (with-open [connection (next.jdbc/get-connection db)]
+          (add-repo-ids connection dir-patterns)))
       (let [elapsed (/ (- (System/nanoTime) start) 1e6)
             per-record (/ elapsed (count records)) ]
-        (println (format "Processed in %.2f ms (%.2f/ms record)" elapsed per-record))))))
+        (log/info :msg (format "Processed in %.2f ms (%.2f/ms record)" elapsed per-record))))))
 
-(defrecord DuckDBBatchOut [url]
+(defrecord DuckDBBatchOut [url file-prefix]
   Connect
   (connect [this]
     (hugsql/set-adapter! (next-adapter/hugsql-adapter-next-jdbc))
@@ -84,4 +97,4 @@
 
       (let [elapsed (/ (- (System/nanoTime) start) 1e6)
             per-record (/ elapsed (count records)) ]
-        (println (format "Processed in %.2f ms (%.2f/ms record)" elapsed per-record))))))
+        (log/info :msg (format "Processed in %.2f ms (%.2f/ms record)" elapsed per-record))))))

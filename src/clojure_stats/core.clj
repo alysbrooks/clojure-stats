@@ -86,7 +86,7 @@
 
 
 (defn analyze-forms* [form file]
-  (let [type (cond 
+  (let [type (cond
                (symbol? form) :symbol 
                (list? form) :list 
                (var? form) :var 
@@ -132,16 +132,15 @@
 (defn classify-files3 [files]
 
   ;; (println (file-seq (File. path)))
-  (->> files
-       (map (fn [file]
-              (try 
-                [file (read-file file)]
-                (catch Exception e
-                  (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
-                  [file nil]))))
-       
-       (mapcat (fn [[file forms]] (analyze-forms forms file)) )
-       #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
+  (into []  (comp 
+              (map (fn [file]
+                     (try 
+                       [file (read-file file)]
+                       (catch Exception e
+                         (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
+                         [file nil]))))
+              (mapcat (fn [[file forms]] (analyze-forms forms file))))
+        files))
 
 (defn classify-and-write [ out ^String path]
   (let [files  (->> (file-seq (File. path))
@@ -155,19 +154,20 @@
    ["-t" "--to FORMAT" "Output format. One of " :parse-fn keyword :default :stdout]
    [nil "--overwrite" "Deletes the database if necessary" :default false]
    ["-o" "--output FILE" "Filename to output to."]
+   [nil "--fixed-prefix PREFIX" "Override the prefix"]
    ["-h" "--help"]])
 
 (defn -main [& args]
 
-  (let [{:keys [arguments] {:keys [output to analysis overwrite]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
+  (let [{:keys [arguments] {:keys [output to analysis overwrite fixed-prefix]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
         output-file (or output "output.db")
         _ (when overwrite 
             (doto (File. ^String output-file)
               (.delete)))
         out (case to
               :stdout ^clojure-stats.output.EDNOut (clojure-stats.output/->EDNOut)
-              :duckdb ^clojure-stats.output.DuckDBOut  (clojure-stats.output/->DuckDBOut output-file)
-              :duckdb_batch ^clojure-stats.output.DuckDBBatchOut (clojure-stats.output/->DuckDBBatchOut output-file))
+              :duckdb ^clojure-stats.output.DuckDBOut  (clojure-stats.output/->DuckDBOut output-file (or fixed-prefix (first arguments)))
+              :duckdb_batch ^clojure-stats.output.DuckDBBatchOut (clojure-stats.output/->DuckDBBatchOut output-file (or fixed-prefix (first arguments))))
         out (if (satisfies? clojure-stats.output/Connect out)
               (clojure-stats.output/connect out)
               out)]
