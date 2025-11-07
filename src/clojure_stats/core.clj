@@ -28,6 +28,38 @@
   (let [resolved  (resolve symbol)]
     (or resolved symbol)))
 
+
+(defn tree-seq-ids 
+  "
+  
+  Based on tree-seq"
+  ([branch? children root]
+   (tree-seq-ids branch? children root (atom 0)))
+  ([branch? children root count]
+   (let [walk (fn walk [depth parent-counter root-counter node]
+                (let [old-count (swap! count inc)] 
+                  (lazy-seq 
+                    (cons {:id old-count :depth depth :node node :parent-id (when (> depth 1) parent-counter) :root-id root-counter } 
+                          (when (branch? node)
+                            (mapcat #(walk (inc depth) old-count (if root-counter root-counter old-count) %) (children node)))))))]
+
+     (walk 1 @count nil root))))
+
+(defn eager-tree-seq-ids 
+  "
+  
+  Based on tree-seq"
+  ([branch? children root]
+   (tree-seq-ids branch? children root (atom 0)))
+  ([branch? children root count]
+   (let [walk (fn walk [depth parent-counter root-counter node]
+                (let [old-count (swap! count inc)] 
+                  (cons {:id old-count :depth depth :node node :parent-id (when (> depth 1) parent-counter) :root-id root-counter } 
+                        (when (branch? node)
+                          (mapcat #(walk (inc depth) old-count (if root-counter root-counter old-count) %) (children node))))))]
+
+     (walk 1 @count nil root))))
+
 (defn enumerate-symbols
   "Enumerates symbols inside a form"
   [forms]
@@ -85,7 +117,7 @@
 
 
 
-(defn analyze-forms* [form file]
+(defn analyze-forms* [{form :node :as processed-form} file]
   (let [type (cond
                (symbol? form) :symbol 
                (list? form) :list 
@@ -94,24 +126,29 @@
                (or (string? form) (number? form) (boolean? form)) :data 
                :else :other)
         resolved-symbol (when (symbol? form) (try-resolve form nil))
-        #_#_symbol-type (when (symbol? form) (classify-symbol resolved-symbol))]
+        #_#_symbol-type (when (symbol? form) (classify-symbol resolved-symbol))
+        meta (if (nil? file) 
+                    (meta form)
+                    (merge (meta form) {:file (str file)}))]
 
-    {:type type
-     :form form
-     :resolved-symbol resolved-symbol
-     :meta (if (nil? file) 
-             (meta form)
-             (merge (meta form) {:file (str file)}))
-     :clojure-type (type form)
-     #_#_:symbol-type symbol-type }))
+    (-> processed-form
+        (merge {:type type
+                :form form
+                :resolved-symbol resolved-symbol
+                :meta meta 
+                :clojure-type (type form)
+                #_#_:symbol-type symbol-type })
+        (dissoc :node))))
 
 (defn analyze-forms 
   ([forms]
    (analyze-forms forms nil))
   ([forms file]
-   (apply concat (for [form forms]
-     (->> (tree-seq sequential? seq form)
-          (map #(analyze-forms* % file)))))))
+   (let [counter (atom 0)]
+     (apply concat 
+          (for [form forms]
+            (->> (eager-tree-seq-ids sequential? seq form counter)
+                 (map #(analyze-forms* % file))))))))
 
 
 (defn classify-files2 [^String path]
@@ -146,7 +183,7 @@
   (let [files  (->> (file-seq (File. path))
                     (filter #(.endsWith (.getName ^File %) ".clj"))) ]
 
-    (doseq  [file-partition (partition 20 files)]
+    (doseq  [file-partition (partition 100 files)]
       (clojure-stats.output/write-records out (classify-files3 file-partition)))))
 
 (def cli-options 

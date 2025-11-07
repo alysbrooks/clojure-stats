@@ -46,8 +46,9 @@
                             (apply hash-set)
                             (mapv vector))
           records (->> records
-                      (mapv (fn [{{:keys [line column file]} :meta :keys [type resolved-symbol meta form clojure-type] :as _record}]
-                             [file (name type) (str form) (str resolved-symbol) (str meta) (str clojure-type) line column ])))]
+                      (mapv (fn [{{:keys [line column file]} :meta :keys [id parent-id root-id depth type resolved-symbol meta form clojure-type] :as _record}]
+                             [id parent-id root-id depth file (name type) (str form) (str resolved-symbol) (str meta) (str clojure-type) line column ]))
+                      (sort-by :id  ))]
       (with-open [connection (next.jdbc/get-connection db)]
         (insert-files connection {:vals file-records})
 

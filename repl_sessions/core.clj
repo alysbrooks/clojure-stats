@@ -1,5 +1,7 @@
 (ns core
-  (:require [clojure-stats.core :refer :all] )
+  (:require [clojure-stats.core :refer :all] 
+            [clojure.walk :as walk]
+            )
   (:import [java.io File]))
 
 (read-file "../shape-of-clojure/test/clojure/clojurescript/src/main/clojure/cljs/cli.clj")
@@ -49,3 +51,18 @@
 (map list? '(test :a (test)))
 
 *e
+(analyze-forms ['(test :a) '(test :b)])
+
+(tree-seq-ids sequential? seq  '(test :a (:b :c)))
+
+(tree-seq sequential? identity [[1 2] 3])
+
+(walk/postwalk
+  (fn [m] 
+    (if (map? m) 
+      (-> m 
+          (update :id inc )
+          (update :parent-id #(when % (inc %)) ))
+      m))
+  (tree-seq-ids sequential? identity '(1 2 3 (4 5))))
+
