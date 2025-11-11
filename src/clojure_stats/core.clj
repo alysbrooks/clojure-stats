@@ -144,6 +144,8 @@
   ([forms]
    (analyze-forms forms nil))
   ([forms file]
+   (analyze-forms forms nil (atom 0)))
+  ([forms file count]
    (let [counter (atom 0)]
      (apply concat 
           (for [form forms]
@@ -166,25 +168,29 @@
        (mapcat (fn [[file forms]] (analyze-forms forms file)) )
        #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
 
-(defn classify-files3 [files]
+(defn classify-files3 
+  ([files]
+   (classify-files3 files (atom 0)))
 
   ;; (println (file-seq (File. path)))
-  (into []  (comp 
-              (map (fn [file]
-                     (try 
-                       [file (read-file file)]
-                       (catch Exception e
-                         (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
-                         [file nil]))))
-              (mapcat (fn [[file forms]] (analyze-forms forms file))))
-        files))
+  ([files counter] 
+   (into []  (comp 
+               (map (fn [file]
+                      (try 
+                        [file (read-file file)]
+                        (catch Exception e
+                          (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
+                          [file nil]))))
+               (mapcat (fn [[file forms]] (analyze-forms forms file counter))))
+         files)))
 
 (defn classify-and-write [ out ^String path]
   (let [files  (->> (file-seq (File. path))
-                    (filter #(.endsWith (.getName ^File %) ".clj"))) ]
+                    (filter #(.endsWith (.getName ^File %) ".clj")))
+       counter (atom 0) ]
 
     (doseq  [file-partition (partition 100 files)]
-      (clojure-stats.output/write-records out (classify-files3 file-partition)))))
+      (clojure-stats.output/write-records out (classify-files3 file-partition counter)))))
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
@@ -202,7 +208,7 @@
             (doto (File. ^String output-file)
               (.delete)))
         out (case to
-              :stdout ^clojure-stats.output.EDNOut (clojure-stats.output/->EDNOut)
+              :stdout ^clojure-stats.output.EDNOut (clojure-stats.output/->EDNOut (or fixed-prefix (first arguments)))
               :duckdb ^clojure-stats.output.DuckDBOut  (clojure-stats.output/->DuckDBOut output-file (or fixed-prefix (first arguments)))
               :duckdb_batch ^clojure-stats.output.DuckDBBatchOut (clojure-stats.output/->DuckDBBatchOut output-file (or fixed-prefix (first arguments))))
         out (if (satisfies? clojure-stats.output/Connect out)
