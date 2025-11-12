@@ -51,7 +51,11 @@
 (map list? '(test :a (test)))
 
 *e
-(analyze-forms ['(test :a) '(test :b)])
+(->> (analyze-forms ['(test ( :a)) '(test :b) '(test :c)])
+    (sort-by :id)
+    )
+
+(analyze-forms ['(test #(+ 1 2))])
 
 (tree-seq-ids sequential? seq  '(test :a (:b :c)))
 

@@ -4,12 +4,15 @@
             [clojure.tools.cli]
             [clojure-stats.output :as output]
             [io.pedestal.log :as log]
+            [clj-uuid :as uuid]
             )
   (:import [java.io File])
   (:gen-class))
 
 
 (comment (set! *warn-on-reflection* true))
+
+(e/parse-string-all "(+ 1 1) (+ 2 2)")
 
 
 (def clojure-defaults {:all true
@@ -34,7 +37,7 @@
   
   Based on tree-seq"
   ([branch? children root]
-   (tree-seq-ids branch? children root (atom 0)))
+   (tree-seq-ids branch? children root (uuid/v6) ))
   ([branch? children root count]
    (let [walk (fn walk [depth parent-counter root-counter node]
                 (let [old-count (swap! count inc)] 
@@ -43,22 +46,22 @@
                           (when (branch? node)
                             (mapcat #(walk (inc depth) old-count (if root-counter root-counter old-count) %) (children node)))))))]
 
-     (walk 1 @count nil root))))
+     (walk 1 (uuid/v6)  nil root))))
 
 (defn eager-tree-seq-ids 
   "
   
   Based on tree-seq"
   ([branch? children root]
-   (tree-seq-ids branch? children root (atom 0)))
-  ([branch? children root count]
    (let [walk (fn walk [depth parent-counter root-counter node]
-                (let [old-count (swap! count inc)] 
-                  (cons {:id old-count :depth depth :node node :parent-id (when (> depth 1) parent-counter) :root-id root-counter } 
-                        (when (branch? node)
-                          (mapcat #(walk (inc depth) old-count (if root-counter root-counter old-count) %) (children node))))))]
+                (let [old-id (uuid/v6)] 
+                  (conj  
+                    (if (branch? node)
+                      (mapcat #(walk (inc depth) old-id (if root-counter root-counter old-id) %) (children node))
+                      [])
+                    {:id old-id :depth depth :node node :parent-id (when (> depth 1) parent-counter) :root-id root-counter})))]
 
-     (walk 1 @count nil root))))
+     (walk 1 nil nil root))))
 
 (defn enumerate-symbols
   "Enumerates symbols inside a form"
@@ -144,13 +147,10 @@
   ([forms]
    (analyze-forms forms nil))
   ([forms file]
-   (analyze-forms forms nil (atom 0)))
-  ([forms file count]
-   (let [counter (atom 0)]
-     (apply concat 
+   (apply concat 
           (for [form forms]
-            (->> (eager-tree-seq-ids sequential? seq form counter)
-                 (map #(analyze-forms* % file))))))))
+            (->> (eager-tree-seq-ids sequential? seq form)
+                 (map #(analyze-forms* % file)))))))
 
 
 (defn classify-files2 [^String path]
@@ -169,11 +169,7 @@
        #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
 
 (defn classify-files3 
-  ([files]
-   (classify-files3 files (atom 0)))
-
-  ;; (println (file-seq (File. path)))
-  ([files counter] 
+  ([files] 
    (into []  (comp 
                (map (fn [file]
                       (try 
@@ -181,16 +177,15 @@
                         (catch Exception e
                           (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
                           [file nil]))))
-               (mapcat (fn [[file forms]] (analyze-forms forms file counter))))
+               (mapcat (fn [[file forms]] (analyze-forms forms file))))
          files)))
 
 (defn classify-and-write [ out ^String path]
   (let [files  (->> (file-seq (File. path))
-                    (filter #(.endsWith (.getName ^File %) ".clj")))
-       counter (atom 0) ]
+                    (filter #(.endsWith (.getName ^File %) ".clj")))]
 
     (doseq  [file-partition (partition 100 files)]
-      (clojure-stats.output/write-records out (classify-files3 file-partition counter)))))
+      (clojure-stats.output/write-records out (classify-files3 file-partition)))))
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]

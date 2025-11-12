@@ -23,8 +23,9 @@ CREATE TABLE files (file_id INTEGER PRIMARY KEY DEFAULT nextval('file_id_serial'
 	repository_id INTEGER);
 -- ;;
 CREATE TABLE forms (form_id INTEGER PRIMARY KEY DEFAULT nextval('form_id_serial'),
-	parent_form_id INTEGER,
-	root_form_id INTEGER,
+	form_uuid UUID,
+	parent_form_uuid UUID,
+	root_form_uuid UUID,
 	form_depth INTEGER,
 	form_type form_type,
 	form VARCHAR,
@@ -44,9 +45,9 @@ VALUES :t*:vals;
 
 -- :name insert-forms :!
 
-INSERT INTO forms (parent_form_id, root_form_id, form_depth, file_id, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column)
-SELECT form_values.parent_form_id, form_values.root_form_id, form_values.form_depth, files.file_id, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column
-FROM (VALUES :t*:vals) form_values(form_id, parent_form_id, root_form_id, form_depth, file_name, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column)
+INSERT INTO forms (form_uuid, parent_form_uuid, root_form_uuid, form_depth, file_id, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column)
+SELECT form_values.form_uuid, form_values.parent_form_uuid, form_values.root_form_uuid, form_values.form_depth, files.file_id, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column
+FROM (VALUES :t*:vals) form_values(form_uuid, parent_form_uuid, root_form_uuid, form_depth, file_name, form_type, form, resolved_symbol, meta, clojure_type, file_line, file_column)
 	LEFT OUTER JOIN files ON (form_values.file_name = files.file_name) ;
 
 
