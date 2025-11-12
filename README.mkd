@@ -1,1 +1,41 @@
 # Clojure Stats
+
+
+# Usage
+
+## Installation
+
+## Using it
+
+To scan repositories in path REPOS, saving the database to:
+
+`clojure -m clojure-stats.core REPOS -t duckdb -o LOCATION`
+
+Repos should follow the form:
+
+```
+owner
+└──repository
+```
+
+
+
+## Full command line
+
+```
+  -a, --analysis
+  -t, --to FORMAT            :stdout  Output format. One of
+      --overwrite            false    Deletes the database if necessary
+  -o, --output FILE                   Filename to output to.
+      --fixed-prefix PREFIX           Override the prefix.
+  -h, --help                          Show this help message.
+      --version                       Show the version being used.
+
+```
+
+
+# License
+
+(c) 2025 Alys S Brooks
+
+Released under the Eclipse Public License, same as Clojure.
