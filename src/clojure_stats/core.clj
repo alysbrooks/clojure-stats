@@ -159,9 +159,9 @@
    ["-t" "--to FORMAT" "Output format. One of " :parse-fn keyword :default :stdout]
    [nil "--overwrite" "Deletes the database if necessary" :default false]
    ["-o" "--output FILE" "Filename to output to."]
-   [nil "--fixed-prefix PREFIX" "Override the prefix"]
-   ["-h" "--help"]
-   [nil "--version"]])
+   [nil "--fixed-prefix PREFIX" "Override the prefix."]
+   ["-h" "--help" "Show this help message."]
+   [nil "--version" "Show the version being used."]])
 
 (defn -main [& args]
 
