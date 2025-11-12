@@ -38,7 +38,9 @@ Example:
 
 ### duckdb
 
-~[](./er_diagram.png)
+The tables created look like this:
+
+![](er_diagram.png)
 
 
 ## Full command line
