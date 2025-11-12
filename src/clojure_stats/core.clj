@@ -4,15 +4,14 @@
             [clojure.tools.cli]
             [clojure-stats.output :as output]
             [io.pedestal.log :as log]
-            [clj-uuid :as uuid]
-            )
+            [clj-uuid :as uuid])
   (:import [java.io File])
   (:gen-class))
 
 
 (comment (set! *warn-on-reflection* true))
 
-(e/parse-string-all "(+ 1 1) (+ 2 2)")
+(def version [0 1 0])
 
 
 (def clojure-defaults {:all true
@@ -161,7 +160,8 @@
    [nil "--overwrite" "Deletes the database if necessary" :default false]
    ["-o" "--output FILE" "Filename to output to."]
    [nil "--fixed-prefix PREFIX" "Override the prefix"]
-   ["-h" "--help"]])
+   ["-h" "--help"]
+   [nil "--version"]])
 
 (defn -main [& args]
 
@@ -180,6 +180,8 @@
 
     (when help 
       (println summary))
+    (when version
+      (clojure.string/join "." version))
 
     (doseq [arg arguments]
       (classify-and-write out arg))))
