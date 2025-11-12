@@ -1,7 +1,6 @@
 (ns core
   (:require [clojure-stats.core :refer :all] 
-            [clojure.walk :as walk]
-            )
+            [clojure.walk :as walk])
   (:import [java.io File]))
 
 (read-file "../shape-of-clojure/test/clojure/clojurescript/src/main/clojure/cljs/cli.clj")

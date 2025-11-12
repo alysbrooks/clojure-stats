@@ -55,10 +55,10 @@
 
         (insert-forms connection {:vals records}))
       ;; Not sure how I feel about these nested lets
-      (let [parent-dir file-prefix 
-            pattern1 (str parent-dir "/(.*?)/") 
-            pattern2 (str parent-dir "/.*?/(.*?)/") 
-        dir-patterns {:pattern1 pattern1 
+      (let [parent-dir file-prefix
+            pattern1 (str parent-dir "/(.*?)/")
+            pattern2 (str parent-dir "/.*?/(.*?)/")
+        dir-patterns {:pattern1 pattern1
                       :pattern2 pattern2}]
         (with-open [connection (next.jdbc/get-connection db)]
           (insert-repositories-from-files connection dir-patterns))

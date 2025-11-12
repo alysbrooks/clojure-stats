@@ -32,30 +32,30 @@
     (or resolved symbol)))
 
 
-(defn tree-seq-ids 
+(defn tree-seq-ids
   "Creates a seq including GUIDs and depths.
-  
+
   Based on tree-seq"
   ([branch? children root]
    (tree-seq-ids branch? children root (uuid/v6) ))
   ([branch? children root count]
    (let [walk (fn walk [depth parent-counter root-counter node]
-                (let [old-count (swap! count inc)] 
-                  (lazy-seq 
-                    (cons {:id old-count :depth depth :node node :parent-id (when (> depth 1) parent-counter) :root-id root-counter } 
+                (let [old-count (swap! count inc)]
+                  (lazy-seq
+                    (cons {:id old-count :depth depth :node node :parent-id (when (> depth 1) parent-counter) :root-id root-counter}
                           (when (branch? node)
                             (mapcat #(walk (inc depth) old-count (if root-counter root-counter old-count) %) (children node)))))))]
 
      (walk 1 (uuid/v6)  nil root))))
 
-(defn eager-tree-seq-ids 
+(defn eager-tree-seq-ids
   "Creates a coll from a tree, including GUIDs and depths.
-  
+
   Based on tree-seq"
   ([branch? children root]
    (let [walk (fn walk [depth parent-counter root-counter node]
-                (let [old-id (uuid/v6)] 
-                  (conj  
+                (let [old-id (uuid/v6)]
+                  (conj
                     (if (branch? node)
                       (mapcat #(walk (inc depth) old-id (if root-counter root-counter old-id) %) (children node))
                       [])
@@ -87,18 +87,16 @@
         (not (nil? resolved-ns)) (keyword "ns" resolved-ns )
         :else :other))
 
-      (catch IllegalArgumentException e 
+      (catch IllegalArgumentException e
         (prn (type resolved) resolved)
         :error))))
 
 (defn classify-symbols [forms]
-  (->> (for [form forms] 
+  (->> (for [form forms]
         (->> (tree-seq seq? identity form)
-
              (filter symbol?)
              (map classify-symbol)
              frequencies))
-
       (reduce #(merge-with + %1 %2))))
 
 
@@ -108,15 +106,15 @@
 
 (defn analyze-forms* [{form :node :as processed-form} file]
   (let [type (cond
-               (symbol? form) :symbol 
-               (list? form) :list 
-               (var? form) :var 
+               (symbol? form) :symbol
+               (list? form) :list
+               (var? form) :var
                (coll? form) :coll
-               (or (string? form) (number? form) (boolean? form)) :data 
+               (or (string? form) (number? form) (boolean? form)) :data
                :else :other)
         resolved-symbol (when (symbol? form) (try-resolve form nil))
         #_#_symbol-type (when (symbol? form) (classify-symbol resolved-symbol))
-        meta (if (nil? file) 
+        meta (if (nil? file)
                     (meta form)
                     (merge (meta form) {:file (str file)}))]
 
@@ -124,43 +122,40 @@
         (merge {:type type
                 :form form
                 :resolved-symbol resolved-symbol
-                :meta meta 
+                :meta meta
                 :clojure-type (type form)
                 #_#_:symbol-type symbol-type })
         (dissoc :node))))
 
-(defn analyze-forms 
+(defn analyze-forms
   ([forms]
    (analyze-forms forms nil))
   ([forms file]
-   (apply concat 
+   (apply concat
           (for [form forms]
             (->> (eager-tree-seq-ids sequential? seq form)
                  (map #(analyze-forms* % file)))))))
 
-
-
-
 (defn classify-files
-  ([files] 
-   (into []  (comp 
-               (map (fn [file]
-                      (try 
-                        [file (read-file file)]
-                        (catch Exception e
-                          (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
-                          [file nil]))))
-               (mapcat (fn [[file forms]] (analyze-forms forms file))))
+  ([files]
+   (into [] (comp
+              (map (fn [file]
+                     (try
+                       [file (read-file file)]
+                       (catch Exception e
+                         (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
+                         [file nil]))))
+              (mapcat (fn [[file forms]] (analyze-forms forms file))))
          files)))
 
 (defn classify-and-write [ out ^String path]
   (let [files  (->> (file-seq (File. path))
                     (filter #(.endsWith (.getName ^File %) ".clj")))]
 
-    (doseq  [file-partition (partition 100 files)]
+    (doseq [file-partition (partition 100 files)]
       (clojure-stats.output/write-records out (classify-files file-partition)))))
 
-(def cli-options 
+(def cli-options
   [["-a" "--analysis" :parse-fn keyword]
    ["-t" "--to FORMAT" "Output format. One of " :parse-fn keyword :default :stdout]
    [nil "--overwrite" "Deletes the database if necessary" :default false]
@@ -172,7 +167,7 @@
 
   (let [{:keys [arguments] {:keys [output to analysis overwrite fixed-prefix]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
         output-file (or output "output.db")
-        _ (when overwrite 
+        _ (when overwrite
             (doto (File. ^String output-file)
               (.delete)))
         out (case to
