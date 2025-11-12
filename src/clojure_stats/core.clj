@@ -165,7 +165,7 @@
 
 (defn -main [& args]
 
-  (let [{:keys [arguments] {:keys [output to analysis overwrite fixed-prefix]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
+  (let [{:keys [arguments summary] {:keys [help output to analysis overwrite fixed-prefix]} :options :as parsed} (clojure.tools.cli/parse-opts args cli-options)
         output-file (or output "output.db")
         _ (when overwrite
             (doto (File. ^String output-file)
@@ -177,6 +177,9 @@
         out (if (satisfies? clojure-stats.output/Connect out)
               (clojure-stats.output/connect out)
               out)]
+
+    (when help 
+      (println summary))
 
     (doseq [arg arguments]
       (classify-and-write out arg))))
