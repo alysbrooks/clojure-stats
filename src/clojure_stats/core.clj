@@ -33,7 +33,7 @@
 
 
 (defn tree-seq-ids 
-  "
+  "Creates a seq including GUIDs and depths.
   
   Based on tree-seq"
   ([branch? children root]
@@ -49,7 +49,7 @@
      (walk 1 (uuid/v6)  nil root))))
 
 (defn eager-tree-seq-ids 
-  "
+  "Creates a coll from a tree, including GUIDs and depths.
   
   Based on tree-seq"
   ([branch? children root]
@@ -101,23 +101,9 @@
 
       (reduce #(merge-with + %1 %2))))
 
-(defn classify-files [path]
-  (let [clj-files (->> (file-seq (File. ^String path))
-                       (filter #(.endsWith ^String (.getName ^File %) ".clj"))) 
-
-        counts (->> (for [file clj-files]
-                     (try 
-                       [(str file)
-                        (classify-symbols (read-file file))]
-                       (catch Exception e
-                         (prn (ex-data e) (ex-cause e))
-                         [file nil])))
-                   (into {}))]
-    counts))
 
 (defn aggregate-top-level [results]
   (apply merge-with + results))
-
 
 
 (defn analyze-forms* [{form :node :as processed-form} file]
@@ -153,22 +139,9 @@
                  (map #(analyze-forms* % file)))))))
 
 
-(defn classify-files2 [^String path]
 
-  ;; (println (file-seq (File. path)))
-  (->> (file-seq (File. path))
-       (filter #(.endsWith (.getName ^File %) ".clj"))
-       (map (fn [file]
-              (try 
-                [file (read-file file)]
-                (catch Exception e
-                  (log/warn :msg "Exception: " :data (ex-data e) :cause (ex-cause e))
-                  [file nil]))))
-       
-       (mapcat (fn [[file forms]] (analyze-forms forms file)) )
-       #_(map (fn [{:keys [meta] :as m}] (merge m meta)))))
 
-(defn classify-files3 
+(defn classify-files
   ([files] 
    (into []  (comp 
                (map (fn [file]
@@ -185,7 +158,7 @@
                     (filter #(.endsWith (.getName ^File %) ".clj")))]
 
     (doseq  [file-partition (partition 100 files)]
-      (clojure-stats.output/write-records out (classify-files3 file-partition)))))
+      (clojure-stats.output/write-records out (classify-files file-partition)))))
 
 (def cli-options 
   [["-a" "--analysis" :parse-fn keyword]
