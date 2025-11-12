@@ -19,6 +19,27 @@ owner
 ```
 
 
+## Schema
+
+### EDN
+
+Example:
+
+```edn
+{:root-id nil, :meta {:line 1, :column 1, :file "../shape-of-clojure/test_2025_10_17/lambdaisland/kaocha/dev/user.clj"},
+:clojure-type nil,
+:resolved-symbol nil,
+:type :list,
+:id #uuid "1f0bf79b-137f-6d70-8bb6-11df03da0930",
+:parent-id nil,
+:depth 1,
+:form (ns user)} 
+```
+
+### duckdb
+
+~[](./er_diagram.png)
+
 
 ## Full command line
 
